@@ -1,0 +1,3 @@
+.env
+feeds.sh
+tmp/*.json

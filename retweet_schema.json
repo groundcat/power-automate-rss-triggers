@@ -1,0 +1,8 @@
+{  
+    "type": "object",
+    "properties": {
+    "status_id": {
+        "type": "string"
+        }
+    }
+}
