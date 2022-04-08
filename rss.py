@@ -6,6 +6,7 @@ import os
 import dotenv
 import hashlib
 from bs4 import BeautifulSoup
+import WebITS
 
 # Validate CLI arguments
 if len(sys.argv) < 2:
@@ -16,10 +17,22 @@ if len(sys.argv) < 2:
 # Parameters
 dotenv.load_dotenv()
 POWER_API_URL = os.getenv("POWER_API_URL")
-TRANSLATION_ENABLED = os.getenv("POWER_API_URL")
+
+# DeepL API
+DEEPL_TRANSLATION_ENABLED = os.getenv("DEEPL_TRANSLATION_ENABLED")
 DEEPL_API_URL = os.getenv("DEEPL_API_URL")
 DEEPL_API_KEY = os.getenv("DEEPL_API_KEY")
 DEEPL_TARGET_LANGUAGE = os.getenv("DEEPL_TARGET_LANGUAGE")
+
+# Xunfei API
+XUNFEI_TRANSLATION_ENABLED = os.getenv("XUNFEI_TRANSLATION_ENABLED")
+XUNFEI_TARGET_LANGUAGE = os.getenv("XUNFEI_TARGET_LANGUAGE")
+XUNFEI_APPID = os.getenv("XUNFEI_APPID")
+XUNFEI_API_KEY = os.getenv("XUNFEI_API_KEY")
+XUNFEI_API_SECRET = os.getenv("XUNFEI_API_SECRET")
+
+print(f"DeepL translation enabled? {DEEPL_TRANSLATION_ENABLED}")
+print(f"Xunfei Translation enabled? {XUNFEI_TRANSLATION_ENABLED}")
 
 # Get the RSS feed
 def main():
@@ -46,7 +59,7 @@ def main():
     description = entry.description
 
     # Encode the URL as a string with md5
-    tmp_filename = hashlib.md5(link.encode('utf-8')).hexdigest()
+    tmp_filename = hashlib.md5(url.encode('utf-8')).hexdigest()
 
     # file path named after the md5 hash of the URL
     cwd = os.getcwd()
@@ -77,7 +90,8 @@ def main():
         body = description
 
     # Get Chinese social media title
-    body = get_chinese_sm_title(body)
+    if "weibo" in url:
+        body = get_chinese_sm_title(body)
 
     # Get text from HTML
     body = get_text_from_html(body)
@@ -88,8 +102,21 @@ def main():
 
     # Translate the RSS feed elements
     print(f"Translating: {body}")
-    if TRANSLATION_ENABLED:
+    if DEEPL_TRANSLATION_ENABLED == "1":
+        print("Using DEEPL")
         body = deepl_translation(body, DEEPL_TARGET_LANGUAGE)
+    
+    if XUNFEI_TRANSLATION_ENABLED == "1":
+        print("Using XUNFEI")
+        translation_instance = WebITS.get_result("itrans.xfyun.cn",body,"cn",XUNFEI_TARGET_LANGUAGE,XUNFEI_APPID,XUNFEI_API_SECRET,XUNFEI_API_KEY)
+        translated_json = translation_instance.call_url()
+        print(f"Translated json: {translated_json}")
+
+        # Load json
+        # translated_json = json.loads(translated_json)
+        # Get the translated text
+        body = translated_json['data']['result']['trans_result']['dst']
+        print(f"Translated text body: {body}")
 
     # Encode the dictionary as payload
     payload = {

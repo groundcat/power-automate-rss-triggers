@@ -1,3 +1,4 @@
 .env
 feeds.sh
 tmp/*.json
+*.pyc

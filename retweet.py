@@ -6,10 +6,11 @@ import os
 import dotenv
 import hashlib
 from bs4 import BeautifulSoup
+import random
 
 # Validate CLI arguments
 if len(sys.argv) < 2:
-    print("Usage: main.py <nitter_rss_feed_url> <keyword>")
+    print("Usage: main.py <twitter_handle> <keyword>")
     sys.exit(1)
 
 # Parameters
@@ -20,12 +21,29 @@ POWER_RETWEET_API_URL = os.getenv("POWER_RETWEET_API_URL")
 def main():
     
     # Get the RSS feed URL
-    url = sys.argv[1]
+    twitter_handle = sys.argv[1]
+    # Trim the handle
+    twitter_handle = twitter_handle.replace("@", "")
+    twitter_handle = twitter_handle.strip()
+
+    # Get a random line from "nitter_instances.txt"
+    with open("nitter_instances.txt", "r") as f:
+        lines = f.readlines()
+        # Remove the newline character
+        lines = [line.rstrip('\n') for line in lines]
+        random_line = lines[random.randint(0, len(lines) - 1)]
+    
+    # Get the RSS feed URL
+    url = "https://" + random_line + "/" + twitter_handle + "/rss"
+    print("==========================================================")
+    print(f"URL: {url}")
 
     # Whether the keyword argument is set
     if len(sys.argv) > 2:
         keyword_enabled = True
-        keyword = sys.argv[2]
+        keyword = str(sys.argv[2])
+        # Trim the keyword
+        keyword = keyword.strip()
     else:
         keyword_enabled = False
 
@@ -36,7 +54,7 @@ def main():
 
     # Parse the RSS feed
     try:
-        NewsFeed = feedparser.parse(sys.argv[1])
+        NewsFeed = feedparser.parse(url)
         entry = NewsFeed.entries[0]
     except:
         print ("Error")
@@ -46,17 +64,19 @@ def main():
     title = entry.title
     link = entry.link
     description = entry.description
+    print(f"Title: {title}")
 
     # Determine if the description contains keyword
     if keyword_enabled:
-        if keyword in description:
+        print(f"Looking for keyword: {keyword}")
+        if keyword in title:
             print("Keyword found")
         else:
             print("Keyword not found")
             exit(1)
 
     # Encode the URL as a string with md5
-    tmp_filename = hashlib.md5(link.encode('utf-8')).hexdigest()
+    tmp_filename = hashlib.md5(twitter_handle.encode('utf-8')).hexdigest()
 
     # file path named after the md5 hash of the URL
     cwd = os.getcwd()
@@ -68,8 +88,10 @@ def main():
         with open(file_path, 'r', encoding='utf-8') as f:
             stored_data = json.load(f)
         # Compare data with entry
-        if (stored_data['link'] == link):
-            print("No new data")
+        if (stored_data['link'] == link or stored_data['title'] == title):
+            print("No new data - matches stored data:")
+            print(f"Title: {stored_data['title']}")
+            print(f"Link: {stored_data['link']}")
             sys.exit(0)
         else:
             print("New data")
@@ -107,10 +129,14 @@ def main():
 # Validate the URL
 def validate_url(url):
     try:
-        r = requests.get(url)
+        # Set a user-agent
+        headers = {'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_10_1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/39.0.2171.95 Safari/537.36'}
+        # Get the response
+        r = requests.get(url, headers=headers)
         if r.status_code == 200:
             return True
         else:
+            print(f"Error code: {r.status_code}")
             return False
     except:
         return False
